@@ -18,8 +18,8 @@
 #define FRONT_DOOR_UNLOCKED_LED 7
 
 // change these settings to match your own setup
-#define FEED    "5942"
-#define APIKEY  "bXkPFCiYm57f7flLyD86bm0HK3TXsfuQF-Jeyh3HeMg"
+#define FEED    "CHANGE ME!"
+#define APIKEY  "CHANGE ME!"
 char website[] PROGMEM = "api.pachube.com";
 
 
