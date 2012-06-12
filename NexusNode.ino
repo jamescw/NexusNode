@@ -10,18 +10,26 @@
 #include <EtherCard.h>
 #include <JeeLib.h>
 #include <avr/eeprom.h>
+#include <Shifter.h>
+
+#define SER_Pin 5 //SER_IN
+#define RCLK_Pin 6 //L_CLOCK
+#define SRCLK_Pin 7 //CLOCK
+#define NUM_REGISTERS 1 //how many registers are in the chain
+
+//initaize shifter using the Shifter library
+Shifter shifter(SER_Pin, RCLK_Pin, SRCLK_Pin, NUM_REGISTERS);
 
 #define DEBUG   1   // set to 1 to display free RAM on web page
 #define SERIAL  1   // set to 1 to show incoming requests on serial port
-
-#define FRONT_DOOR_LOCKED_LED 6
-#define FRONT_DOOR_UNLOCKED_LED 7
 
 // change these settings to match your own setup
 #define FEED    "5942"
 #define APIKEY  "bXkPFCiYm57f7flLyD86bm0HK3TXsfuQF-Jeyh3HeMg"
 char website[] PROGMEM = "api.pachube.com";
 
+const boolean ON = LOW;  //Define on as LOW (this is because we use a common Anode RGB LED (common pin is connected to +5 volts)
+const boolean OFF = HIGH; //Define off as HIGH
 
 #define CONFIG_EEPROM_ADDR ((byte*) 0x10)
 
@@ -83,9 +91,13 @@ static int freeRam () {
 #endif
 
 void setup(){
+    
+    shifter.setAll(OFF);
+    shifter.write();
+
 #if SERIAL
     Serial.begin(57600);
-    Serial.println("\n[etherNode]");
+    Serial.println("\n[NexusNode]");
 #endif
     loadConfig();
     
@@ -97,9 +109,6 @@ void setup(){
     ether.printIp("IP: ", ether.myip);
     ether.printIp("SRV: ", ether.hisip);
 #endif
-
-    pinMode(FRONT_DOOR_UNLOCKED_LED, OUTPUT);
-    pinMode(FRONT_DOOR_LOCKED_LED, OUTPUT); 
 }
 
 char okHeader[] PROGMEM = 
@@ -236,10 +245,36 @@ static void sendPage(const char* data, BufferFiller& buf) {
         "</form>"), okHeader);
 }
 
+// an array to define the number of doors and there LED shifter mappings
+static int doors[][2] = {
+    { 0, 0 }, // dummy entry, node address 0 is reserved 
+    { 2, 3 },
+    { 4, 5 },
+    { 6, 7 }
+};
+
+// show door state by altering the color of a RGB LED: Red = Open, Green = Closed
+static void showDoorState(int door, byte state) {
+    int pinOn = doors[door][state];
+    int pinOff = doors[door][!state];
+    Serial.print("Set pin: ");
+    Serial.print(pinOn);
+    shifter.setPin(pinOn, ON);
+    Serial.println(" ON");
+    Serial.print("Set pin: ");
+    Serial.print(pinOff);
+    shifter.setPin(pinOff, OFF);
+    Serial.println(" OFF");
+    shifter.write();
+    Serial.println("Done");
+}
+
 void processData() {
-  
-    digitalWrite(FRONT_DOOR_LOCKED_LED, !rf12_data[0]);
-    digitalWrite(FRONT_DOOR_UNLOCKED_LED, rf12_data[0]);
+    // each node address represents a door number
+    int door = rf12_hdr & RF12_HDR_MASK;
+    // the node payload represents the state of the door, 0 = open, 1 = closed
+    byte state = rf12_data[0];
+    showDoorState(door, state);
 }
 
 void loop(){
@@ -250,7 +285,7 @@ void loop(){
         bfill = ether.tcpOffset();
         char* data = (char *) Ethernet::buffer + pos;
 #if SERIAL
-        Serial.println(data);
+        //Serial.println(data);
 #endif
         // receive buf hasn't been clobbered by reply yet
         if (strncmp("GET / ", data, 6) == 0)
@@ -285,7 +320,7 @@ void loop(){
 #endif
             rf12_sendStart(RF12_ACK_REPLY, 0, 0);
         }
-        
+        // process the payload here
         processData();
     }
     
