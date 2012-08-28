@@ -24,8 +24,8 @@ Shifter shifter(SER_Pin, RCLK_Pin, SRCLK_Pin, NUM_REGISTERS);
 #define SERIAL  1   // set to 1 to show incoming requests on serial port
 
 // change these settings to match your own setup
-#define FEED    "5942"
-#define APIKEY  "bXkPFCiYm57f7flLyD86bm0HK3TXsfuQF-Jeyh3HeMg"
+#define FEED    "71674"
+#define APIKEY  "jwEMmhDzepXmV4qZ-K5Csv9kGjKHGVoM3DTu3ZKYBCE"
 char website[] PROGMEM = "api.pachube.com";
 
 const boolean ON = LOW;  //Define on as LOW (this is because we use a common Anode RGB LED (common pin is connected to +5 volts)
@@ -60,6 +60,7 @@ static byte next_msg;       // pointer to next rf12rcvd line
 static word msgs_rcvd;      // total number of lines received modulo 10,000
 
 byte Ethernet::buffer[1000];   // tcp/ip send and receive buffer
+Stash stash;
 
 static void loadConfig() {
     for (byte i = 0; i < sizeof config; ++i)
@@ -121,8 +122,8 @@ static void homePage(BufferFiller& buf) {
     word mhz = config.band == 4 ? 433 : config.band == 8 ? 868 : 915;
     buf.emit_p(PSTR("$F\r\n"
         "<meta http-equiv='refresh' content='$D'/>"
-        "<title>RF12 etherNode - $D MHz, group $D</title>" 
-        "RF12 etherNode - $D MHz, group $D "
+        "<title>RF12 NexusNode - $D MHz, group $D</title>" 
+        "RF12 NexusNode - $D MHz, group $D "
             "- <a href='c'>configure</a> - <a href='s'>send packet</a>"
         "<h3>Last $D messages:</h3>"
         "<pre>"), okHeader, config.refresh, mhz, config.group,
@@ -255,26 +256,38 @@ static int doors[][2] = {
 
 // show door state by altering the color of a RGB LED: Red = Open, Green = Closed
 static void showDoorState(int door, byte state) {
-    int pinOn = doors[door][state];
-    int pinOff = doors[door][!state];
-    Serial.print("Set pin: ");
-    Serial.print(pinOn);
-    shifter.setPin(pinOn, ON);
-    Serial.println(" ON");
-    Serial.print("Set pin: ");
-    Serial.print(pinOff);
+    int pinOn = doors[door][!state];
+    int pinOff = doors[door][state];
+    shifter.setPin(pinOn, ON);;
     shifter.setPin(pinOff, OFF);
-    Serial.println(" OFF");
     shifter.write();
-    Serial.println("Done");
 }
 
 void processData() {
     // each node address represents a door number
     int door = rf12_hdr & RF12_HDR_MASK;
-    // the node payload represents the state of the door, 0 = open, 1 = closed
+    // the node payload represents the state of the door, 1 = open, 0 = closed
     byte state = rf12_data[0];
     showDoorState(door, state);
+    
+//    byte sd = stash.create();
+//    stash.print((int)door);
+//    stash.print(",");
+//    stash.println((int)state);
+//    stash.save();
+//    
+//    // generate the header with payload - note that the stash size is used,
+//    // and that a "stash descriptor" is passed in as argument using "$H"
+//    Stash::prepare(PSTR("PUT http://$F/v2/feeds/$F.csv HTTP/1.0" "\r\n"
+//                        "Host: $F" "\r\n"
+//                        "X-PachubeApiKey: $F" "\r\n"
+//                        "Content-Length: $D" "\r\n"
+//                        "\r\n"
+//                        "$H"),
+//            website, PSTR(FEED), website, PSTR(APIKEY), stash.size(), sd);
+//
+//    // send the packet - this also releases all stash buffers once done
+//    ether.tcpSend();
 }
 
 void loop(){
