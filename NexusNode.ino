@@ -25,7 +25,7 @@ Shifter shifter(SER_Pin, RCLK_Pin, SRCLK_Pin, NUM_REGISTERS);
 
 // change these settings to match your own setup
 #define FEED    "71674"
-#define APIKEY  "jwEMmhDzepXmV4qZ-K5Csv9kGjKHGVoM3DTu3ZKYBCE"
+#define APIKEY  "YOUR_KEY"
 char website[] PROGMEM = "api.pachube.com";
 
 const boolean ON = LOW;  //Define on as LOW (this is because we use a common Anode RGB LED (common pin is connected to +5 volts)
